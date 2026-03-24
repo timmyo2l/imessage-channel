@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "imessage-channel": {
+      "command": "bun",
+      "args": ["run", "/Users/timothyjones/Projects/imessage-channel/src/server.ts"],
+      "env": {
+        "IMESSAGE_HANDLE": "+61412345678"
+      }
+    }
+  }
+}

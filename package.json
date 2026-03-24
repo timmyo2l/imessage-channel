@@ -1,0 +1,12 @@
+{
+  "name": "imessage-channel",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
