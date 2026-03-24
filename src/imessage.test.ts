@@ -135,7 +135,7 @@ describe("sendMessage", () => {
     const args = spy.mock.calls[0][0] as string[]
     expect(args[0]).toBe("osascript")
     expect(args[1]).toBe("-e")
-    expect(args[2]).toContain('tell application "Messages"')
+    expect(args[2]).toBe('tell application "Messages"')
     // message text appears in the send line (one of the -e args)
     expect(args.some(a => a.includes("hello"))).toBe(true)
     spy.mockRestore()

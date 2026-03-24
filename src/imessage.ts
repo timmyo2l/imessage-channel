@@ -84,12 +84,13 @@ export function splitMessage(text: string, maxLen = MAX_LEN): string[] {
 function buildAppleScriptLines(handle: string, text: string): string[] {
   const escapeForAppleScript = (s: string) =>
     s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")
-  // Use dynamic service lookup — `service "iMessage"` by name fails on macOS Ventura+
-  // Lines passed as separate -e flags to avoid multi-line string parsing issues
+  // Use tell-block form to avoid intermediate variable across -e flags
+  // and dynamic service lookup for macOS Ventura+ compatibility
   return [
     `tell application "Messages"`,
-    `set _svc to 1st service whose service type = iMessage`,
-    `send "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of _svc`,
+    `tell (1st service whose service type = iMessage)`,
+    `send "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}"`,
+    `end tell`,
     `end tell`,
   ]
 }
