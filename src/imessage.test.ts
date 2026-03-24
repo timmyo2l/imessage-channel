@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test"
+import { describe, it, expect } from "bun:test"
 import { Database } from "bun:sqlite"
 import { getInitialRowId, readNewMessages } from "./imessage"
 
