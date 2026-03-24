@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test"
+import { describe, it, expect, spyOn } from "bun:test"
 import { Database } from "bun:sqlite"
-import { getInitialRowId, readNewMessages } from "./imessage"
+import { getInitialRowId, readNewMessages, splitMessage, sendMessage } from "./imessage"
 
 function makeTestDb(): Database {
   const db = new Database(":memory:")
@@ -81,5 +81,70 @@ describe("readNewMessages", () => {
     const msgs = readNewMessages(db, "+61400000000", 6)
     expect(msgs.map(m => m.text)).toEqual(["first", "second"])
     db.close()
+  })
+})
+
+describe("splitMessage", () => {
+  it("returns the text as-is when under the limit", () => {
+    expect(splitMessage("hello")).toEqual(["hello"])
+  })
+
+  it("splits on paragraph boundaries (double newline)", () => {
+    const text = "para one\n\npara two\n\npara three"
+    expect(splitMessage(text, 50)).toEqual(["para one", "para two", "para three"])
+  })
+
+  it("hard-splits a paragraph that exceeds the limit", () => {
+    const long = "a".repeat(3000)
+    const parts = splitMessage(long, 1500)
+    expect(parts).toHaveLength(2)
+    expect(parts[0]).toHaveLength(1500)
+    expect(parts[1]).toHaveLength(1500)
+  })
+
+  it("combines short paragraphs into chunks under the limit", () => {
+    // Two short paras that together fit in one chunk
+    const text = "short one\n\nshort two"
+    const parts = splitMessage(text, 1500)
+    expect(parts).toHaveLength(1)
+    expect(parts[0]).toBe("short one\n\nshort two")
+  })
+
+  it("keeps oversized paragraph alongside short ones correctly", () => {
+    const big = "x".repeat(1600)
+    const text = `tiny\n\n${big}\n\nsmall`
+    const parts = splitMessage(text, 1500)
+    // "tiny" is small, big splits into 2, "small" is its own
+    expect(parts.length).toBeGreaterThanOrEqual(3)
+    expect(parts[0]).toBe("tiny")
+  })
+})
+
+describe("sendMessage", () => {
+  it("calls Bun.spawnSync with osascript and returns ok:true on success", async () => {
+    const spy = spyOn(Bun, "spawnSync").mockReturnValue({
+      exitCode: 0,
+      stdout: Buffer.from(""),
+      stderr: Buffer.from(""),
+    } as any)
+
+    const result = await sendMessage("+61400000000", "hello")
+    expect(result).toEqual({ ok: true })
+    expect(spy).toHaveBeenCalled()
+    const args = spy.mock.calls[0][0] as string[]
+    expect(args[0]).toBe("osascript")
+    spy.mockRestore()
+  })
+
+  it("returns ok:false with stderr when osascript exits non-zero", async () => {
+    const spy = spyOn(Bun, "spawnSync").mockReturnValue({
+      exitCode: 1,
+      stdout: Buffer.from(""),
+      stderr: Buffer.from("Messages not running"),
+    } as any)
+
+    const result = await sendMessage("+61400000000", "hello")
+    expect(result).toEqual({ ok: false, error: "Messages not running" })
+    spy.mockRestore()
   })
 })

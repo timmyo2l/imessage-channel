@@ -44,3 +44,56 @@ export function getInitialRowId(db: Database, handle: string): number {
 export function readNewMessages(db: Database, handle: string, afterRowId: number): Message[] {
   return getStmts(db).newMsgs.all(afterRowId, handle) as Message[]
 }
+
+const MAX_LEN = 1500
+
+// Hard-split a string at maxLen boundaries
+function hardSplit(text: string, maxLen: number): string[] {
+  const parts: string[] = []
+  for (let i = 0; i < text.length; i += maxLen) {
+    parts.push(text.slice(i, i + maxLen))
+  }
+  return parts
+}
+
+export function splitMessage(text: string, maxLen = MAX_LEN): string[] {
+  const paragraphs = text.split(/\n\n/)
+  const result: string[] = []
+  let current = ""
+
+  for (const para of paragraphs) {
+    // Para itself exceeds limit — hard split it
+    if (para.length > maxLen) {
+      if (current) { result.push(current); current = "" }
+      result.push(...hardSplit(para, maxLen))
+      continue
+    }
+    // Would adding para overflow current chunk?
+    const candidate = current ? current + "\n\n" + para : para
+    if (candidate.length > maxLen) {
+      result.push(current)
+      current = para
+    } else {
+      current = candidate
+    }
+  }
+  if (current) result.push(current)
+  return result
+}
+
+function buildAppleScript(handle: string, text: string): string {
+  const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  return `tell application "Messages"\nsend "${escaped}" to buddy "${handle}" of service "iMessage"\nend tell`
+}
+
+export async function sendMessage(handle: string, text: string): Promise<SendResult> {
+  const parts = splitMessage(text)
+  for (const part of parts) {
+    const script = buildAppleScript(handle, part)
+    const result = Bun.spawnSync(["osascript", "-e", script])
+    if (result.exitCode !== 0) {
+      return { ok: false, error: result.stderr.toString().trim() }
+    }
+  }
+  return { ok: true }
+}
