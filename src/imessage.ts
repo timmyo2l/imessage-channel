@@ -81,23 +81,25 @@ export function splitMessage(text: string, maxLen = MAX_LEN): string[] {
   return result
 }
 
-function buildAppleScript(handle: string, text: string): string {
+function buildAppleScriptLines(handle: string, text: string): string[] {
   const escapeForAppleScript = (s: string) =>
     s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")
   // Use dynamic service lookup — `service "iMessage"` by name fails on macOS Ventura+
+  // Lines passed as separate -e flags to avoid multi-line string parsing issues
   return [
     `tell application "Messages"`,
-    `  set _svc to 1st service whose service type = iMessage`,
-    `  send "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of _svc`,
+    `set _svc to 1st service whose service type = iMessage`,
+    `send "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of _svc`,
     `end tell`,
-  ].join("\n")
+  ]
 }
 
 export async function sendMessage(handle: string, text: string): Promise<SendResult> {
   const parts = splitMessage(text)
   for (const part of parts) {
-    const script = buildAppleScript(handle, part)
-    const result = Bun.spawnSync(["osascript", "-e", script])
+    const lines = buildAppleScriptLines(handle, part)
+    const eArgs = lines.flatMap(line => ["-e", line])
+    const result = Bun.spawnSync(["osascript", ...eArgs])
     if (result.exitCode !== 0) {
       return { ok: false, error: result.stderr.toString().trim() }
     }
