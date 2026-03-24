@@ -91,7 +91,7 @@ describe("splitMessage", () => {
 
   it("splits on paragraph boundaries (double newline)", () => {
     const text = "para one\n\npara two\n\npara three"
-    expect(splitMessage(text, 50)).toEqual(["para one", "para two", "para three"])
+    expect(splitMessage(text, 15)).toEqual(["para one", "para two", "para three"])
   })
 
   it("hard-splits a paragraph that exceeds the limit", () => {
