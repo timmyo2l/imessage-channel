@@ -91,6 +91,7 @@ describe("splitMessage", () => {
 
   it("splits on paragraph boundaries (double newline)", () => {
     const text = "para one\n\npara two\n\npara three"
+    // maxLen=15: "para one\n\npara two" = 18 chars > 15, so paragraphs can't be combined
     expect(splitMessage(text, 15)).toEqual(["para one", "para two", "para three"])
   })
 
@@ -133,6 +134,9 @@ describe("sendMessage", () => {
     expect(spy).toHaveBeenCalled()
     const args = spy.mock.calls[0][0] as string[]
     expect(args[0]).toBe("osascript")
+    expect(args[1]).toBe("-e")
+    expect(args[2]).toContain('tell application "Messages"')
+    expect(args[2]).toContain("hello")  // the message text appears in the script
     spy.mockRestore()
   })
 

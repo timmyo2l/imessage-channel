@@ -82,8 +82,9 @@ export function splitMessage(text: string, maxLen = MAX_LEN): string[] {
 }
 
 function buildAppleScript(handle: string, text: string): string {
-  const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  return `tell application "Messages"\nsend "${escaped}" to buddy "${handle}" of service "iMessage"\nend tell`
+  const escapeForAppleScript = (s: string) =>
+    s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")
+  return `tell application "Messages"\nsend "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of service "iMessage"\nend tell`
 }
 
 export async function sendMessage(handle: string, text: string): Promise<SendResult> {
