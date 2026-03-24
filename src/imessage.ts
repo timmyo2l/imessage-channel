@@ -84,7 +84,13 @@ export function splitMessage(text: string, maxLen = MAX_LEN): string[] {
 function buildAppleScript(handle: string, text: string): string {
   const escapeForAppleScript = (s: string) =>
     s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")
-  return `tell application "Messages"\nsend "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of service "iMessage"\nend tell`
+  // Use dynamic service lookup — `service "iMessage"` by name fails on macOS Ventura+
+  return [
+    `tell application "Messages"`,
+    `  set _svc to 1st service whose service type = iMessage`,
+    `  send "${escapeForAppleScript(text)}" to buddy "${escapeForAppleScript(handle)}" of _svc`,
+    `end tell`,
+  ].join("\n")
 }
 
 export async function sendMessage(handle: string, text: string): Promise<SendResult> {
