@@ -29,6 +29,10 @@ if (!PHONE_RE.test(handle) && !EMAIL_RE.test(handle)) {
 }
 
 const timeoutMs = parseInt(process.env.PERMISSION_TIMEOUT_SECONDS ?? "300", 10) * 1000
+if (isNaN(timeoutMs)) {
+  console.error("Error: PERMISSION_TIMEOUT_SECONDS must be a number.")
+  process.exit(1)
+}
 // handle is guaranteed non-null after the checks above
 const safeHandle = handle as string
 
@@ -89,7 +93,11 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (req.params.name !== "reply") {
     return { content: [{ type: "text", text: `Unknown tool: ${req.params.name}` }], isError: true }
   }
-  const text = (req.params.arguments as { text: string }).text
+  const parsed = z.object({ text: z.string() }).safeParse(req.params.arguments)
+  if (!parsed.success) {
+    return { content: [{ type: "text", text: "Invalid arguments: text (string) is required." }], isError: true }
+  }
+  const text = parsed.data.text
   const result = await sendMessage(safeHandle, text)
   if (!result.ok) {
     return { content: [{ type: "text", text: `Failed to send iMessage: ${result.error}` }], isError: true }
@@ -134,9 +142,6 @@ async function startPoller() {
       const messages = readNewMessages(chatDb, safeHandle, lastRowId)
       for (const msg of messages) {
         lastRowId = msg.rowid
-
-        // Skip messages with null text (Tapbacks/reactions — not useful to Claude)
-        if (msg.text === null) continue
 
         // Check if this is a permission reply first
         const parsed = permissions.parseReply(msg.text)

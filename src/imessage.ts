@@ -2,7 +2,7 @@ import { Database, Statement } from "bun:sqlite"
 
 export type Message = {
   rowid: number
-  text: string | null
+  text: string   // non-null: SQL query filters AND m.text IS NOT NULL
   handle: string
 }
 
