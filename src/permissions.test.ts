@@ -20,6 +20,10 @@ describe("PermissionManager.parseReply", () => {
     expect(pm.parseReply("  yes abcde  ")).toEqual({ requestId: "abcde", behavior: "allow" })
   })
 
+  it("parses 'always abcde'", () => {
+    expect(pm.parseReply("always abcde")).toEqual({ requestId: "abcde", behavior: "allowAlways" })
+  })
+
   it("rejects single-letter 'y'", () => {
     expect(pm.parseReply("y abcde")).toBeNull()
   })
@@ -74,6 +78,15 @@ describe("PermissionManager bare yes/no", () => {
     const pm = new PermissionManager(() => {}, 300_000)
     pm.store("abcde", 5000)
     expect(pm.parseReply("YES")).toEqual({ requestId: "abcde", behavior: "allow" })
+  })
+
+  it("bare 'always' targets the most recent pending request", async () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    const promise = pm.store("abcde", 5000)
+    const parsed = pm.parseReply("always")
+    expect(parsed).toEqual({ requestId: "abcde", behavior: "allowAlways" })
+    pm.respond(parsed!.requestId, parsed!.behavior)
+    expect(await promise).toBe("allowAlways")
   })
 
   it("bare reply targets latest request when multiple are pending", () => {

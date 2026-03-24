@@ -121,7 +121,7 @@ server.setNotificationHandler(PermissionRequestSchema, async ({ params }) => {
   const { request_id, tool_name, description, input_preview } = params
   const prompt =
     `Claude wants to run ${tool_name}:\n${description}\n${input_preview}\n\n` +
-    `Reply: yes or no`
+    `Reply: yes, no, or always`
 
   await sendMessage(safeHandle, prompt)
   const behavior = await permissions.store(request_id)

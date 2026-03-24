@@ -1,7 +1,14 @@
-const PERMISSION_REPLY_RE = /^\s*(yes|no)\s+([a-km-z]{5})\s*$/i
-const BARE_REPLY_RE = /^\s*(yes|no)\s*$/i
+const PERMISSION_REPLY_RE = /^\s*(yes|no|always)\s+([a-km-z]{5})\s*$/i
+const BARE_REPLY_RE = /^\s*(yes|no|always)\s*$/i
 
-export type Behavior = "allow" | "deny"
+export type Behavior = "allow" | "deny" | "allowAlways"
+
+function parseBehavior(word: string): Behavior {
+  const w = word.toLowerCase()
+  if (w === "always") return "allowAlways"
+  if (w === "no") return "deny"
+  return "allow"
+}
 
 type Pending = {
   resolve: (b: Behavior) => void
@@ -52,14 +59,14 @@ export class PermissionManager {
     if (withId) {
       return {
         requestId: withId[2].toLowerCase(),
-        behavior: withId[1].toLowerCase() === "yes" ? "allow" : "deny",
+        behavior: parseBehavior(withId[1]),
       }
     }
     const bare = BARE_REPLY_RE.exec(text)
     if (bare && this.lastRequestId !== null) {
       return {
         requestId: this.lastRequestId,
-        behavior: bare[1].toLowerCase() === "yes" ? "allow" : "deny",
+        behavior: parseBehavior(bare[1]),
       }
     }
     return null
