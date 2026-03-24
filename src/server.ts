@@ -141,27 +141,33 @@ async function startPoller() {
     try {
       const messages = readNewMessages(chatDb, safeHandle, lastRowId)
       for (const msg of messages) {
-        lastRowId = msg.rowid
-
-        // Check if this is a permission reply first
+        // Permission reply: consume and advance cursor regardless
         const parsed = permissions.parseReply(msg.text)
         if (parsed) {
-          const found = permissions.respond(parsed.requestId, parsed.behavior)
-          if (found) continue // consumed by permission flow
+          permissions.respond(parsed.requestId, parsed.behavior)
+          lastRowId = msg.rowid
+          continue
         }
 
-        // Forward as a channel message
-        await server.notification({
-          method: "notifications/claude/channel",
-          params: { content: msg.text, meta: { handle: msg.handle } },
-        })
+        // Forward as a channel message; only advance cursor on success
+        try {
+          await server.notification({
+            method: "notifications/claude/channel",
+            params: { content: msg.text, meta: { handle: msg.handle } },
+          })
+          lastRowId = msg.rowid
+        } catch (e) {
+          console.error("[poller] notification error:", e)
+          break // retry this message next poll
+        }
       }
     } catch (e) {
       console.error("[poller] poll error:", e)
     }
+    setTimeout(poll, 2000) // schedule next poll only after this one finishes
   }
 
-  setInterval(poll, 2000)
+  poll()
   console.error(`[imessage-channel] polling for messages from ${safeHandle}`)
 }
 
