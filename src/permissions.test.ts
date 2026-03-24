@@ -65,4 +65,11 @@ describe("PermissionManager request lifecycle", () => {
     pm.store("abcde", 5000)
     expect(pm.respond("abcde", "deny")).toBe(true)
   })
+
+  it("calls onTimeout callback when request expires", async () => {
+    const timedOut: string[] = []
+    const pm = new PermissionManager((id) => timedOut.push(id), 50)
+    await pm.store("abcde", 50)
+    expect(timedOut).toEqual(["abcde"])
+  })
 })
