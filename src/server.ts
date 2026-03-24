@@ -121,7 +121,7 @@ server.setNotificationHandler(PermissionRequestSchema, async ({ params }) => {
   const { request_id, tool_name, description, input_preview } = params
   const prompt =
     `Claude wants to run ${tool_name}:\n${description}\n${input_preview}\n\n` +
-    `Reply: yes ${request_id}  OR  no ${request_id}`
+    `Reply: yes or no`
 
   await sendMessage(safeHandle, prompt)
   const behavior = await permissions.store(request_id)
@@ -137,10 +137,14 @@ server.setNotificationHandler(PermissionRequestSchema, async ({ params }) => {
 async function startPoller() {
   let lastRowId = getInitialRowId(chatDb, safeHandle)
 
+  console.error(`[poller] starting, lastRowId=${lastRowId}`)
+
   const poll = async () => {
     try {
       const messages = readNewMessages(chatDb, safeHandle, lastRowId)
+      if (messages.length > 0) console.error(`[poller] ${messages.length} new message(s), lastRowId=${lastRowId}`)
       for (const msg of messages) {
+        console.error(`[poller] msg rowid=${msg.rowid} text=${JSON.stringify(msg.text)}`)
         // Permission reply: consume and advance cursor regardless
         const parsed = permissions.parseReply(msg.text)
         if (parsed) {
@@ -156,6 +160,7 @@ async function startPoller() {
             params: { content: msg.text, meta: { handle: msg.handle } },
           })
           lastRowId = msg.rowid
+          console.error(`[poller] forwarded rowid=${msg.rowid}`)
         } catch (e) {
           console.error("[poller] notification error:", e)
           break // retry this message next poll
@@ -164,7 +169,7 @@ async function startPoller() {
     } catch (e) {
       console.error("[poller] poll error:", e)
     }
-    setTimeout(poll, 2000) // schedule next poll only after this one finishes
+    setTimeout(poll, 2000)
   }
 
   poll()

@@ -39,6 +39,56 @@ describe("PermissionManager.parseReply", () => {
   it("returns null for plain text", () => {
     expect(pm.parseReply("run the tests")).toBeNull()
   })
+
+  it("returns null for bare 'yes' when no pending request", () => {
+    const fresh = new PermissionManager(() => {}, 300_000)
+    expect(fresh.parseReply("yes")).toBeNull()
+  })
+
+  it("returns null for bare 'no' when no pending request", () => {
+    const fresh = new PermissionManager(() => {}, 300_000)
+    expect(fresh.parseReply("no")).toBeNull()
+  })
+})
+
+describe("PermissionManager bare yes/no", () => {
+  it("bare 'yes' targets the most recent pending request", async () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    const promise = pm.store("abcde", 5000)
+    const parsed = pm.parseReply("yes")
+    expect(parsed).toEqual({ requestId: "abcde", behavior: "allow" })
+    pm.respond(parsed!.requestId, parsed!.behavior)
+    expect(await promise).toBe("allow")
+  })
+
+  it("bare 'no' targets the most recent pending request", async () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    const promise = pm.store("abcde", 5000)
+    const parsed = pm.parseReply("no")
+    expect(parsed).toEqual({ requestId: "abcde", behavior: "deny" })
+    pm.respond(parsed!.requestId, parsed!.behavior)
+    expect(await promise).toBe("deny")
+  })
+
+  it("bare 'yes' is case insensitive", () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    pm.store("abcde", 5000)
+    expect(pm.parseReply("YES")).toEqual({ requestId: "abcde", behavior: "allow" })
+  })
+
+  it("bare reply targets latest request when multiple are pending", () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    pm.store("aaaaa", 5000)
+    pm.store("bbbbb", 5000)
+    expect(pm.parseReply("yes")).toEqual({ requestId: "bbbbb", behavior: "allow" })
+  })
+
+  it("clears lastRequestId after respond, so bare yes/no no longer matches", () => {
+    const pm = new PermissionManager(() => {}, 300_000)
+    pm.store("abcde", 5000)
+    pm.respond("abcde", "allow")
+    expect(pm.parseReply("yes")).toBeNull()
+  })
 })
 
 describe("PermissionManager request lifecycle", () => {
